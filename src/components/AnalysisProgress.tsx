@@ -19,6 +19,10 @@ const AnalysisProgressComponent: React.FC<AnalysisProgressProps> = ({
     return null;
   }
 
+  if (progress.hasError) {
+    return null;
+  }
+
   return (
     <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 my-4">
       <div className="flex justify-between items-center mb-4">
@@ -64,13 +68,14 @@ const AnalysisProgressComponent: React.FC<AnalysisProgressProps> = ({
         </div>
       </div>
 
-      {!progress.isProcessing && progress.currentTag > 0 && !progress.hasError && (
+      {!progress.isProcessing && progress.currentTag > 0 && (
         <div className="flex items-center gap-2 text-green-600 font-semibold p-2 bg-green-50 border border-green-200 rounded">
           <span className="text-lg">✅</span>
           Analysis complete!
         </div>
       )} 
     </div>
+    
   );
 };
 
