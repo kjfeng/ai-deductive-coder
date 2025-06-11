@@ -4,7 +4,7 @@ export interface Tag {
   id: string;
   name: string;
   description: string;
-  status: 'idle' | 'processing' | 'completed' | 'no-results';
+  status: 'idle' | 'processing' | 'completed' | 'no-results' | 'error';
   quotes: string[];
 }
 
@@ -25,4 +25,5 @@ export interface AnalysisProgress {
   currentTag: number;
   totalTags: number;
   isProcessing: boolean;
+  hasError: boolean;
 }

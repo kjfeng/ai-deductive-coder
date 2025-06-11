@@ -13,7 +13,6 @@ export const parsePDF = async (file: File): Promise<Document> => {
     fileReader.onload = async function() {
       try {
         const arrayBuffer = this.result as ArrayBuffer;
-        console.log('Starting PDF parsing...');
         
         const loadingTask = pdfjsLib.getDocument({
           data: arrayBuffer,
@@ -23,14 +22,11 @@ export const parsePDF = async (file: File): Promise<Document> => {
         
         const pdf = await loadingTask.promise;
         
-        console.log(`PDF loaded successfully. Pages: ${pdf.numPages}`);
-        
         let fullText = '';
         const totalPages = pdf.numPages;
         
         // Extract text from each page
         for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-          console.log(`Processing page ${pageNum}/${totalPages}`);
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
           const pageText = textContent.items
@@ -38,21 +34,18 @@ export const parsePDF = async (file: File): Promise<Document> => {
             .join(' ');
           fullText += pageText + '\n\n';
         }
-        
-        console.log('PDF parsing completed successfully');
+      
         resolve({
           name: file.name,
           content: fullText.trim(),
           totalPages
         });
       } catch (error) {
-        console.error('Error parsing PDF:', error);
         reject(new Error(`Failed to parse PDF: ${error instanceof Error ? error.message : 'Unknown error'}`));
       }
     };
     
     fileReader.onerror = () => {
-      console.error('File reader error');
       reject(new Error('Failed to read file'));
     };
     

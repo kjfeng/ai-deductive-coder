@@ -33,13 +33,13 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({
   const getDefaultModel = (provider: AIConfig['provider']): string => {
     switch (provider) {
       case 'openai':
-        return 'gpt-3.5-turbo';
+        return 'gpt-4o';
       case 'anthropic':
-        return 'claude-3-sonnet-20240229';
+        return 'claude-sonnet-4-20250514';
       case 'custom':
         return 'custom-model';
       default:
-        return 'gpt-3.5-turbo';
+        return 'gpt-4o';
     }
   };
 
@@ -104,15 +104,15 @@ const AIConfiguration: React.FC<AIConfigurationProps> = ({
             <input
               id="model"
               type="text"
-              placeholder={`Default: ${getDefaultModel(provider)}`}
+              placeholder={`Default (if blank): ${getDefaultModel(provider)}`}
               value={model}
               onChange={(e) => setModel(e.target.value)}
               disabled={isProcessing}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
             />
             <small className="text-xs text-gray-500 mt-1 block">
-              {provider === 'openai' && 'e.g., gpt-3.5-turbo, gpt-4, gpt-4-turbo'}
-              {provider === 'anthropic' && 'e.g., claude-3-sonnet-20240229, claude-3-haiku-20240307'}
+              {provider === 'openai' && 'e.g., gpt-4, gpt-4o, o1-mini'}
+              {provider === 'anthropic' && 'e.g., claude-sonnet-4-0, claude-3-7-sonnet-latest'}
               {provider === 'custom' && 'Enter your custom model name'}
             </small>
           </div>

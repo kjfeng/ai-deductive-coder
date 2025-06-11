@@ -10,6 +10,7 @@ const AnalysisProgressComponent: React.FC<AnalysisProgressProps> = ({
   progress,
   currentTagName
 }) => {
+    console.log("[progress]", progress)
   const progressPercentage = progress.totalTags > 0 
     ? ((progress.currentTag - 1) / progress.totalTags) * 100 
     : 0;
@@ -63,12 +64,12 @@ const AnalysisProgressComponent: React.FC<AnalysisProgressProps> = ({
         </div>
       </div>
 
-      {!progress.isProcessing && progress.currentTag > 0 && (
+      {!progress.isProcessing && progress.currentTag > 0 && !progress.hasError && (
         <div className="flex items-center gap-2 text-green-600 font-semibold p-2 bg-green-50 border border-green-200 rounded">
           <span className="text-lg">✅</span>
           Analysis complete!
         </div>
-      )}
+      )} 
     </div>
   );
 };

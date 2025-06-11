@@ -15,14 +15,13 @@ function App() {
   const [progress, setProgress] = useState<AnalysisProgressType>({
     currentTag: 0,
     totalTags: 0,
-    isProcessing: false
+    isProcessing: false,
+    hasError: false,
   });
 
   const handleFileUpload = useCallback(async (file: File) => {
     try {
-      console.log('Processing file:', file.name, file.size, 'bytes');
       const parsedDocument = await parsePDF(file);
-      console.log('Document parsed successfully:', parsedDocument.name, parsedDocument.totalPages, 'pages');
       setDocument(parsedDocument);
     } catch (error) {
       console.error('Error parsing PDF:', error);
@@ -48,7 +47,8 @@ function App() {
     setProgress({
       currentTag: 1,
       totalTags: tags.length,
-      isProcessing: true
+      isProcessing: true,
+      hasError: false,
     });
 
     // Reset all tags to idle status
@@ -97,9 +97,15 @@ function App() {
           // Mark tag as failed
           setTags(currentTags => 
             currentTags.map(t => 
-              t.id === tag.id ? { ...t, status: 'no-results' } : t
+              t.id === tag.id ? { ...t, status: 'error' } : t
             )
           );
+          
+          // Mark progress as having errors
+          setProgress(prev => ({ ...prev, hasError: true }));
+          
+          console.error('Analysis failed:', error);
+          alert('Analysis failed. Please check your AI configuration and try again.');
         }
       }
     } catch (error) {

@@ -29,7 +29,7 @@ export class AIService {
   }
 
   private buildPrompt(document: string, tag: Tag): string {
-    return `You are analyzing a document for qualitative coding. Please identify and extract relevant quotes from the document that relate to the following tag:
+    return `You are analyzing a document for qualitative coding. Please identify and extract relevant quotes from the document that closely relate to the following tag:
 
 Tag: "${tag.name}"
 Description: "${tag.description}"
@@ -39,12 +39,12 @@ ${document}
 
 Instructions:
 1. Carefully read through the document
-2. Identify any passages, sentences, or phrases that are relevant to the tag "${tag.name}"
-3. Extract these relevant quotes exactly as they appear in the document
+2. Identify any passages, sentences, or phrases that are closely relevant to the tag "${tag.name}"
+3. Extract these relevant quotes exactly as they appear in the document.
 4. Return only the relevant quotes, one per line
 5. If no relevant content is found, return "NO_MATCHES"
 
-Important: Only return direct quotes from the document. Do not paraphrase or summarize.`;
+Important: Only return direct quotes from the document. Do not paraphrase or summarize. Do not, under any circumstances, make up quotes that are not present in the document.`;
   }
 
   private async callOpenAI(prompt: string): Promise<string[]> {
@@ -67,6 +67,10 @@ Important: Only return direct quotes from the document. Do not paraphrase or sum
         }
       }
     );
+
+    if (response.status !== 200) {
+        throw new Error('No content returned from the API. Please double-check for typos in your configuration!');
+    }
 
     const content = response.data.choices[0]?.message?.content || '';
     return this.parseQuotes(content);
@@ -92,6 +96,10 @@ Important: Only return direct quotes from the document. Do not paraphrase or sum
       }
     );
 
+    if (response.status !== 200) {
+        throw new Error('No content returned from the API. Please double-check for typos in your configuration!');
+    }
+
     const content = response.data.content[0]?.text || '';
     return this.parseQuotes(content);
   }
@@ -114,6 +122,10 @@ Important: Only return direct quotes from the document. Do not paraphrase or sum
         }
       }
     );
+
+    if (response.status !== 200) {
+        throw new Error('No content returned from the API. Please double-check for typos in your configuration!');
+    }
 
     const content = response.data.response || response.data.content || '';
     return this.parseQuotes(content);
