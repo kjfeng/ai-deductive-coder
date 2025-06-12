@@ -125,7 +125,7 @@ function App() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 py-8">
         <header className="text-center mb-12 p-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl text-white shadow-lg">
-          <h1 className="text-4xl font-bold mb-2">🔍 AI Deductive Qualitative Coding</h1>
+          <h1 className="text-4xl font-bold mb-2">🔍 AI Deductive Coding</h1>
           <p className="text-lg opacity-90 max-w-2xl mx-auto leading-relaxed">
             Upload a PDF document, define coding tags, and let AI identify relevant quotes automatically
           </p>

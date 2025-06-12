@@ -65,7 +65,7 @@ const TagManager: React.FC<TagManagerProps> = ({
         <div className="flex flex-col gap-3 max-w-2xl">
           <input
             type="text"
-            placeholder="Tag name (e.g., 'Patient Safety')"
+            placeholder="Tag name (e.g., 'CBRN risks')"
             value={newTagName}
             onChange={(e) => setNewTagName(e.target.value)}
             onKeyPress={handleKeyPress}
@@ -73,7 +73,7 @@ const TagManager: React.FC<TagManagerProps> = ({
             className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none disabled:bg-gray-100"
           />
           <textarea
-            placeholder="Tag description (e.g., 'References to patient safety concerns, protocols, or incidents')"
+            placeholder="Tag description (e.g., 'References CBRN (Chemical, Biological, Radiological, Nuclear) risks.')"
             value={newTagDescription}
             onChange={(e) => setNewTagDescription(e.target.value)}
             onKeyPress={handleKeyPress}

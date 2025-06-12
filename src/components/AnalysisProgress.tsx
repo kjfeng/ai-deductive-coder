@@ -11,9 +11,13 @@ const AnalysisProgressComponent: React.FC<AnalysisProgressProps> = ({
   currentTagName
 }) => {
     console.log("[progress]", progress)
-  const progressPercentage = progress.totalTags > 0 
+  let progressPercentage = progress.totalTags > 0 
     ? ((progress.currentTag - 1) / progress.totalTags) * 100 
     : 0;
+
+  if (progress.currentTag === progress.totalTags && !progress.isProcessing) {
+    progressPercentage = 100;
+  }
 
   if (!progress.isProcessing && progress.currentTag === 0) {
     return null;
