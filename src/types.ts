@@ -6,6 +6,7 @@ export interface Tag {
   description: string;
   status: 'idle' | 'processing' | 'completed' | 'no-results' | 'error';
   quotes: string[];
+  fingerprint?: string; // Hash of name + description to detect changes
 }
 
 export interface AIConfig {

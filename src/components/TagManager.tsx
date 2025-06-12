@@ -1,6 +1,18 @@
 import React, { useState } from 'react';
 import { Tag } from '../types';
 
+// Simple hash function to create fingerprints for tags
+const createTagFingerprint = (name: string, description: string): string => {
+  const content = `${name.trim()}|${description.trim()}`;
+  let hash = 0;
+  for (let i = 0; i < content.length; i++) {
+    const char = content.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32-bit integer
+  }
+  return hash.toString();
+};
+
 interface TagManagerProps {
   tags: Tag[];
   onTagsChange: (tags: Tag[]) => void;
@@ -14,6 +26,9 @@ const TagManager: React.FC<TagManagerProps> = ({
 }) => {
   const [newTagName, setNewTagName] = useState('');
   const [newTagDescription, setNewTagDescription] = useState('');
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editTagName, setEditTagName] = useState('');
+  const [editTagDescription, setEditTagDescription] = useState('');
 
   const addTag = () => {
     if (newTagName.trim() && newTagDescription.trim()) {
@@ -22,7 +37,8 @@ const TagManager: React.FC<TagManagerProps> = ({
         name: newTagName.trim(),
         description: newTagDescription.trim(),
         status: 'idle',
-        quotes: []
+        quotes: [],
+        fingerprint: createTagFingerprint(newTagName.trim(), newTagDescription.trim())
       };
       
       onTagsChange([...tags, newTag]);
@@ -33,6 +49,48 @@ const TagManager: React.FC<TagManagerProps> = ({
 
   const removeTag = (tagId: string) => {
     onTagsChange(tags.filter(tag => tag.id !== tagId));
+  };
+
+  const startEditing = (tag: Tag) => {
+    setEditingTagId(tag.id);
+    setEditTagName(tag.name);
+    setEditTagDescription(tag.description);
+  };
+
+  const cancelEditing = () => {
+    setEditingTagId(null);
+    setEditTagName('');
+    setEditTagDescription('');
+  };
+
+  const saveEdit = () => {
+    if (editTagName.trim() && editTagDescription.trim() && editingTagId) {
+      const newFingerprint = createTagFingerprint(editTagName.trim(), editTagDescription.trim());
+      const updatedTags = tags.map(tag =>
+        tag.id === editingTagId
+          ? { 
+              ...tag, 
+              name: editTagName.trim(), 
+              description: editTagDescription.trim(),
+              fingerprint: newFingerprint,
+              // Reset status and quotes if the tag content changed
+              status: newFingerprint !== tag.fingerprint ? 'idle' as const : tag.status,
+              quotes: newFingerprint !== tag.fingerprint ? [] : tag.quotes
+            }
+          : tag
+      );
+      onTagsChange(updatedTags);
+      cancelEditing();
+    }
+  };
+
+  const handleEditKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      cancelEditing();
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -97,36 +155,83 @@ const TagManager: React.FC<TagManagerProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {tags.map((tag) => (
               <div key={tag.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="flex items-center gap-2">
-                    {getStatusIcon(tag.status)}
-                    <span className="font-semibold text-gray-800">{tag.name}</span>
-                  </div>
-                  {!isProcessing && (
-                    <button
-                      onClick={() => removeTag(tag.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 w-6 h-6 rounded-full flex items-center justify-center transition-colors"
-                      title="Remove tag"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-                <p className="text-gray-600 text-sm mb-3 leading-relaxed">{tag.description}</p>
-                {tag.quotes.length > 0 && (
-                  <div className="pt-3 border-t border-gray-100">
-                    <strong className="text-sm text-gray-700">Found {tag.quotes.length} relevant quote{tag.quotes.length !== 1 ? 's' : ''}:</strong>
-                    <div className="mt-2">
-                      {tag.quotes.slice(0, 2).map((quote, index) => (
-                        <div key={index} className="bg-gray-50 p-2 rounded text-xs italic text-gray-600 mb-1 leading-snug">
-                          "{quote.substring(0, 100)}{quote.length > 100 ? '...' : ''}"
-                        </div>
-                      ))}
-                      {tag.quotes.length > 2 && (
-                        <div className="text-blue-500 text-xs font-medium">+ {tag.quotes.length - 2} more quote{tag.quotes.length - 2 !== 1 ? 's' : ''}</div>
-                      )}
+                {editingTagId === tag.id ? (
+                  // Editing mode
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      value={editTagName}
+                      onChange={(e) => setEditTagName(e.target.value)}
+                      onKeyPress={handleEditKeyPress}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm font-semibold"
+                    />
+                    <textarea
+                      value={editTagDescription}
+                      onChange={(e) => setEditTagDescription(e.target.value)}
+                      onKeyPress={handleEditKeyPress}
+                      rows={2}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-vertical min-h-[60px] text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={saveEdit}
+                        disabled={!editTagName.trim() || !editTagDescription.trim()}
+                        className="px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEditing}
+                        className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition-colors"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </div>
+                ) : (
+                  // Display mode
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(tag.status)}
+                        <span className="font-semibold text-gray-800">{tag.name}</span>
+                      </div>
+                      {!isProcessing && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => startEditing(tag)}
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 w-6 h-6 rounded-full flex items-center justify-center transition-colors"
+                            title="Edit tag"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => removeTag(tag.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 w-6 h-6 rounded-full flex items-center justify-center transition-colors"
+                            title="Remove tag"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-gray-600 text-sm mb-3 leading-relaxed">{tag.description}</p>
+                    {tag.quotes.length > 0 && (
+                      <div className="pt-3 border-t border-gray-100">
+                        <strong className="text-sm text-gray-700">Found {tag.quotes.length} relevant quote{tag.quotes.length !== 1 ? 's' : ''}:</strong>
+                        <div className="mt-2">
+                          {tag.quotes.slice(0, 2).map((quote, index) => (
+                            <div key={index} className="bg-gray-50 p-2 rounded text-xs italic text-gray-600 mb-1 leading-snug">
+                              "{quote.substring(0, 100)}{quote.length > 100 ? '...' : ''}"
+                            </div>
+                          ))}
+                          {tag.quotes.length > 2 && (
+                            <div className="text-blue-500 text-xs font-medium">+ {tag.quotes.length - 2} more quote{tag.quotes.length - 2 !== 1 ? 's' : ''}</div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}

@@ -38,28 +38,80 @@ function App() {
     setAIConfig(config);
   }, []);
 
+  // Helper function to create fingerprint for existing tags without one
+  const createTagFingerprint = (name: string, description: string): string => {
+    const content = `${name.trim()}|${description.trim()}`;
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return hash.toString();
+  };
+
+  // Ensure all tags have fingerprints (for backwards compatibility)
+  const ensureTagFingerprints = useCallback((tagsToCheck: Tag[]): Tag[] => {
+    return tagsToCheck.map(tag => ({
+      ...tag,
+      fingerprint: tag.fingerprint || createTagFingerprint(tag.name, tag.description)
+    }));
+  }, []);
+
   const startAnalysis = async () => {
     if (!document || !aiConfig || tags.length === 0) {
       alert('Please upload a document, configure AI settings, and add tags before starting analysis.');
       return;
     }
 
+    // Ensure all tags have fingerprints for comparison
+    const tagsWithFingerprints = ensureTagFingerprints(tags);
+    if (tagsWithFingerprints !== tags) {
+      setTags(tagsWithFingerprints);
+    }
+
+    // Identify which tags need analysis (new or modified)
+    const tagsNeedingAnalysis = tagsWithFingerprints.filter(tag => 
+      !tag.fingerprint || 
+      tag.status === 'idle' || 
+      tag.status === 'error' ||
+      (tag.status === 'completed' && tag.quotes.length === 0) ||
+      (tag.status === 'no-results' && tag.quotes.length === 0)
+    );
+
+    const totalTagsToProcess = tagsNeedingAnalysis.length;
+    const totalTagsSkipped = tags.length - totalTagsToProcess;
+
+    if (totalTagsToProcess === 0) {
+      alert('All tags have already been analyzed and are up to date.');
+      return;
+    }
+
+    if (totalTagsSkipped > 0) {
+      console.log(`Skipping ${totalTagsSkipped} unchanged tag(s), click to analyze ${totalTagsToProcess} new/modified tag(s)`);
+    }
+
     setProgress({
       currentTag: 1,
-      totalTags: tags.length,
+      totalTags: totalTagsToProcess,
       isProcessing: true,
       hasError: false,
     });
 
-    // Reset all tags to idle status
-    const resetTags = tags.map(tag => ({ ...tag, status: 'idle' as const, quotes: [] }));
-    setTags(resetTags);
+    // Only reset tags that need analysis
+    const updatedTags = tagsWithFingerprints.map(tag => {
+      if (tagsNeedingAnalysis.some(t => t.id === tag.id)) {
+        return { ...tag, status: 'idle' as const };
+      }
+      return tag; // Keep existing results for unchanged tags
+    });
+    setTags(updatedTags);
 
     const aiService = new AIService(aiConfig);
 
     try {
-      for (let i = 0; i < tags.length; i++) {
-        const tag = resetTags[i];
+      for (let i = 0; i < tagsNeedingAnalysis.length; i++) {
+        const tag = tagsNeedingAnalysis[i];
         
         // Update current tag being processed
         setProgress(prev => ({ ...prev, currentTag: i + 1 }));
@@ -88,7 +140,7 @@ function App() {
           );
 
           // Small delay between requests to avoid rate limiting
-          if (i < tags.length - 1) {
+          if (i < tagsNeedingAnalysis.length - 1) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         } catch (error) {
@@ -117,6 +169,28 @@ function App() {
   };
 
   const canStartAnalysis = document && aiConfig && tags.length > 0 && !progress.isProcessing;
+  
+  // Calculate how many tags need analysis for the button display
+  const getAnalysisInfo = () => {
+    if (!canStartAnalysis) return { needsAnalysis: 0, total: tags.length };
+    
+    const tagsWithFingerprints = ensureTagFingerprints(tags);
+    const tagsNeedingAnalysis = tagsWithFingerprints.filter(tag => 
+      !tag.fingerprint || 
+      tag.status === 'idle' || 
+      tag.status === 'error' ||
+      (tag.status === 'completed' && tag.quotes.length === 0) ||
+      (tag.status === 'no-results' && tag.quotes.length === 0)
+    );
+    
+    return { 
+      needsAnalysis: tagsNeedingAnalysis.length, 
+      total: tags.length,
+      allUpToDate: tagsNeedingAnalysis.length === 0
+    };
+  };
+
+  const analysisInfo = getAnalysisInfo();
   const currentTag = progress.isProcessing && progress.currentTag > 0 
     ? tags[progress.currentTag - 1] 
     : null;
@@ -153,12 +227,37 @@ function App() {
 
             {canStartAnalysis && (
               <div className="mt-8 pt-8 border-t border-gray-200 text-center">
-                <button 
-                  onClick={startAnalysis} 
-                  className="px-8 py-4 bg-gradient-to-r from-green-500 to-teal-500 text-white text-lg font-semibold rounded-lg hover:from-green-600 hover:to-teal-600 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl"
-                >
-                  🚀 Start Analysis
-                </button>
+                {analysisInfo.allUpToDate ? (
+                  <div className="space-y-3">
+                    <div className="text-green-600 font-medium">
+                      ✅ All {analysisInfo.total} tag{analysisInfo.total !== 1 ? 's are' : ' is'} up to date
+                    </div>
+                    <button 
+                      onClick={startAnalysis} 
+                      className="px-8 py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white text-lg font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-600 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    >
+                      🔄 Re-analyze All Tags
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {analysisInfo.needsAnalysis < analysisInfo.total && (
+                      <div className="text-blue-600 text-sm">
+                        {analysisInfo.total - analysisInfo.needsAnalysis} tag{analysisInfo.total - analysisInfo.needsAnalysis !== 1 ? 's' : ''} already completed, 
+                        analyzing {analysisInfo.needsAnalysis} new/modified tag{analysisInfo.needsAnalysis !== 1 ? 's' : ''}
+                      </div>
+                    )}
+                    <button 
+                      onClick={startAnalysis} 
+                      className="px-8 py-4 bg-gradient-to-r from-green-500 to-teal-500 text-white text-lg font-semibold rounded-lg hover:from-green-600 hover:to-teal-600 transform hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-xl"
+                    >
+                      🚀 Start Analysis
+                      {analysisInfo.needsAnalysis < analysisInfo.total && 
+                        ` (${analysisInfo.needsAnalysis} tag${analysisInfo.needsAnalysis !== 1 ? 's' : ''})`
+                      }
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
